@@ -77,7 +77,7 @@ namespace Task1
 		            price - 19.0000
              */
 
-            var result = products.Select(
+            return products.Select(
                 p => new Linq7CategoryGroup
                 {
                     Category = p.Category,
@@ -86,12 +86,10 @@ namespace Task1
                         new Linq7UnitsInStockGroup
                         {
                             UnitsInStock = p.UnitsInStock,
-                            Prices = products.Select(product => product.UnitPrice).ToArray()
+                            Prices = products.Where(product => product.Category == p.Category && product.UnitsInStock == p.UnitsInStock).Select(pr => pr.UnitPrice).ToArray()
                         }
                     }
                 });
-
-            return result;
         }
 
         public static IEnumerable<(decimal category, IEnumerable<Product> products)> Linq8(
@@ -101,59 +99,68 @@ namespace Task1
             decimal expensive
         )
         {
-            //string GetPricingGroup(Product p)
-            //{
-            //    var price = p.UnitPrice;
-            //    if (price <= cheap)
-            //    {
-            //        return "cheap";
-            //    }
-            //    if (price > cheap && price <= middle)
-            //    {
-            //        return "average";
-            //    }
-            //    if (price > middle && price <= expensive)
-            //    {
-            //        return "expensive";
-            //    }
+            var result =
+                products
+                    .Where(p => p.UnitPrice <= cheap)
+                    .GroupBy(p => p.UnitPrice <= cheap)
+                    .Select(p =>
+                        (cheap, products
+                            .Where(p => p.UnitPrice <= cheap)));
 
-            //    return string.Empty;
-            //}
+            result = result.Union(products
+                .Where(p => p.UnitPrice > cheap && p.UnitPrice <= middle)
+                    .GroupBy(p => p.UnitPrice > cheap && p.UnitPrice <= middle)
+                    .Select(r =>
+                        (middle, products
+                            .Where(p => p.UnitPrice > cheap && p.UnitPrice <= middle))));
 
-            //var resultQuery =
-            //    from product in products
-            //    let pricingGroup = GetPricingGroup(product)
-            //    group new
-            //    {
-            //        product
-            //    } by pricingGroup into g
-            //    orderby g.Key
-            //    select g;
+            result = result.Union(
+                products
+                    .Where(p => p.UnitPrice > middle && p.UnitPrice <= expensive)
+                    .GroupBy(p => p.UnitPrice > middle && p.UnitPrice <= expensive)
+                    .Select(r =>
+                        (expensive, products
+                            .Where(p => p.UnitPrice > middle && p.UnitPrice <= expensive))));
 
-            //return resultQuery;
-
-
-            //todo return customers.Select(c => (c, suppliers.Where(s => s.Country == c.Country && s.City == c.City)));
-
-            var result = products.Select(p => (cheap, products.Where(x => x.UnitPrice <= cheap)));
-            //result = result.Union(products.Select(p =>
-            //    (middle, products.Where(pr => pr.UnitPrice > cheap && pr.UnitPrice <= middle)))).GroupBy(x => x.Item2.Select(x => x.Category)).ToList();
-            //result = result.Union(products.Select(p =>
-            //    (expensive, products.Where(pr => pr.UnitPrice > middle && pr.UnitPrice <= expensive)))).GroupBy(x => x.Item2.Select(x => x.Category)).ToList();
-
-            foreach (var group in result)
-            {
-                yield return group;
-            }
-
-            //return result;
+            return result;
         }
 
         public static IEnumerable<(string city, int averageIncome, int averageIntensity)> Linq9(
             IEnumerable<Customer> customers
         )
         {
-            throw new NotImplementedException();
+            /* todo example
+
+            ("Berlin", 2023, 3),
+            ("Mexico D.F.", 680, 2),
+            ("London", 690, 1),
+            ("Warszawa", 1, 0),
+            ("Sao Paulo", 0, 0),
+            ("USA", 0, 0)
+            
+            todo have
+
+            ("Berlin", 674, 3),
+            ("Mexico D.F.", 296, 3),
+            ("Mexico D.F.", 576, 2),
+            ("London", 690, 1),
+            ("Mexico D.F.", 0, 2),
+            ("London", 0, 0),
+            ("Warszawa", 2, 1),
+            ("Warszawa", 0, 0),
+            ("Sao Paulo", 0, 0),
+            ("USA", 0, 0)
+
+             */
+
+            var result = customers
+                .Select(c => (c.City,
+                    (int)c.Orders
+                        .Where(o => o.OrderDate != null)
+                        .GroupBy(o => customers.Select(c => c.City))
+                        .Select(g => (g, (int)c.Orders.DefaultIfEmpty().Average(o => o?.Total ?? default(int)))).Average(o => o.Item2),
+                    c.Orders.Length));
+            return result;
         }
 
         public static string Linq10(IEnumerable<Supplier> suppliers)
